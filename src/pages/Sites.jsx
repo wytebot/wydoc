@@ -187,7 +187,7 @@ export default function Sites({ sites, site, setSite }) {
           <div className="siteRow" key={s.id}>
             <Globe2 className="siteRowIcon" />
             <div className="siteRowInfo"><b>{s.name}</b><small>{s.url} · {s.articleCount ?? 0} posts found</small></div>
-            <button className="secondary siteOpen" onClick={() => { setSite(s); window.scrollTo({top:0,behavior:"smooth"}); }}>Open</button>
+            <div className="siteRowActions"><button className={site?.id===s.id ? "secondary siteOpen active" : "secondary siteOpen"} onClick={() => { setSite(s); window.scrollTo({top:0,behavior:"smooth"}); }}>{site?.id===s.id ? 'Connected' : 'Open'}</button>{site?.id!==s.id && <button className="secondary siteChangeInline" onClick={() => { setSite(s); window.scrollTo({top:0,behavior:"smooth"}); }}>Change to this</button>}</div>
           </div>
         ))}
         {!sites.length && <div className="emptyMini">No sites connected yet.</div>}
