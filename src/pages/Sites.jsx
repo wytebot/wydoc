@@ -179,17 +179,33 @@ export default function Sites({ sites, site, setSite }) {
       </div>
 
       <div className="card">
-        <div className="cardTitle">
-          <h3>Connected sites</h3>
-          <span className="muted">{sites.length}{sites.some(s => s.plan === 'pro') ? ' · Pro' : ' / 1 free'}</span>
-        </div>
-        {sites.map(s => (
-          <div className="siteRow" key={s.id}>
-            <Globe2 className="siteRowIcon" />
-            <div className="siteRowInfo"><b>{s.name}</b><small>{s.url} · {s.articleCount ?? 0} posts found</small></div>
-            <div className="siteRowActions"><button className={site?.id===s.id ? "secondary siteOpen active" : "secondary siteOpen"} onClick={() => { setSite(s); window.scrollTo({top:0,behavior:"smooth"}); }}>{site?.id===s.id ? 'Connected' : 'Open'}</button>{site?.id!==s.id && <button className="secondary siteChangeInline" onClick={() => { setSite(s); window.scrollTo({top:0,behavior:"smooth"}); }}>Change to this</button>}</div>
+        <div className="cardTitle connectedSitesHeader">
+          <div>
+            <h3>Connected sites</h3>
+            <span className="muted">{sites.length}{sites.some(s => s.plan === 'pro') ? ' · Pro' : ' / 1 free'}</span>
           </div>
-        ))}
+          {sites.length > 1 && (
+            <button className="secondary changeSiteHeaderBtn" onClick={() => document.getElementById('connected-sites-list')?.scrollIntoView({behavior:'smooth',block:'start'})}>
+              <Globe2 size={16} /> Change site
+            </button>
+          )}
+        </div>
+        <div id="connected-sites-list">
+          {sites.map(s => (
+            <div className="siteRow" key={s.id}>
+              <Globe2 className="siteRowIcon" />
+              <div className="siteRowInfo"><b>{s.name}</b><small>{s.url} · {s.articleCount ?? 0} posts found</small></div>
+              <div className="siteRowActions">
+                <a className="secondary siteOpen" href={s.url} target="_blank" rel="noopener noreferrer" aria-label={`Open ${s.name} in a new tab`}>Open</a>
+                {site?.id === s.id ? (
+                  <span className="connectedPill"><CheckCircle2 size={15} /> Active</span>
+                ) : (
+                  <button className="primary siteChangeInline" onClick={() => { setSite(s); window.scrollTo({top:0,behavior:'smooth'}); }}>Change to this</button>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
         {!sites.length && <div className="emptyMini">No sites connected yet.</div>}
       </div>
 
