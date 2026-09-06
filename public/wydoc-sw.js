@@ -1,4 +1,4 @@
-const WYDOC_SW_VERSION = '2026-09-06-v17';
+const WYDOC_SW_VERSION = '2026-09-07-v18';
 
 self.addEventListener('install', event => { event.waitUntil(self.skipWaiting()); });
 self.addEventListener('activate', event => { event.waitUntil(self.clients.claim()); });
