@@ -63,6 +63,9 @@ Do not store full copies of every article by default. Store content hashes, URLs
 ### Web push server setup
 Set `VAPID_PRIVATE_KEY` and `VAPID_EMAIL` server-side in addition to the public `VITE_VAPID_PUBLIC_KEY`. The Notifications page can send a test alert after a browser subscription is created.
 
+## v5 build fix
+- **Vercel build failed immediately** with `Error: Function Runtimes must have a valid version`. `vercel.json` set `"runtime": "nodejs22.x"` under `functions`, but that field expects a versioned Vercel Runtime identifier (e.g. `@vercel/node@x.x.x`), not a Node version string — Vercel's zero-config Node detection already picks up `.js` files in `/api` without any `functions` block. Removed it and pinned the Node version the supported way, via `"engines": {"node": "22.x"}` in `package.json`.
+
 ## v4 audit fixes (bugs and dead flows)
 - **Push notification clicks did nothing.** `wydoc-sw.js` referenced an undefined `target` variable in `notificationclick`, throwing a silent error every time a user tapped an alert. Fixed to navigate/focus/open using the actual notification URL.
 - **Flutterwave webhook signatures would fail in production.** Vercel auto-parses JSON bodies before your handler runs; re-serializing that object with `JSON.stringify` does not reliably reproduce the exact bytes Flutterwave signed, so real webhooks could fail verification and nobody would ever get upgraded to Pro after paying. The handler now disables body parsing and verifies against the true raw request bytes.
