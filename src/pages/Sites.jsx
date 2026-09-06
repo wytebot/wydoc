@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { db, auth } from '../lib/firebase';
-import { Globe2, CheckCircle2, XCircle, Loader2, Copy, ExternalLink, Lock, ShieldCheck } from 'lucide-react';
+import { Globe2, CheckCircle2, XCircle, Loader2, Copy, ExternalLink, Lock, ShieldCheck, ScanSearch } from 'lucide-react';
 
 async function authedJson(url, opts = {}) {
   const token = auth.currentUser ? await auth.currentUser.getIdToken() : null;
@@ -95,6 +95,12 @@ export default function Sites({ sites, site, setSite }) {
       });
       setSite(data.site);
       setUrl(''); setPreview(null); resetVerification();
+      try {
+        const token = await auth.currentUser.getIdToken();
+        const scan = await fetch('/api/initial-scan', { method:'POST', headers:{ Authorization:`Bearer ${token}`, 'Content-Type':'application/json' }, body:JSON.stringify({siteId:data.site.id}) });
+        const scanData = await scan.json().catch(()=>({}));
+        if (!scan.ok) console.warn('Initial scan failed:', scanData.error);
+      } catch (e) { console.warn('Initial scan skipped:', e); }
     } catch (e) {
       setConnectErr(e.message || 'Could not connect site');
       // The tag could have been removed between the check and now — don't
@@ -179,9 +185,9 @@ export default function Sites({ sites, site, setSite }) {
         </div>
         {sites.map(s => (
           <div className="siteRow" key={s.id}>
-            <Globe2 />
-            <div><b>{s.name}</b><small>{s.url} · {s.articleCount ?? 0} posts found</small></div>
-            <button className="secondary" onClick={() => setSite(s)}>Open</button>
+            <Globe2 className="siteRowIcon" />
+            <div className="siteRowInfo"><b>{s.name}</b><small>{s.url} · {s.articleCount ?? 0} posts found</small></div>
+            <button className="secondary siteOpen" onClick={() => { setSite(s); window.scrollTo({top:0,behavior:"smooth"}); }}>Open</button>
           </div>
         ))}
         {!sites.length && <div className="emptyMini">No sites connected yet.</div>}
@@ -189,7 +195,7 @@ export default function Sites({ sites, site, setSite }) {
 
       {site && (
         <div className="card integration">
-          <h3>Easy integration</h3>
+          <h3>Integration</h3>
           <p className="muted">Place this once in your site's header. It reports page changes to WyDoc without sending your article body.</p>
           <pre>{`<script src="${window.location.origin}/widget.js" data-site-id="${site.id}" data-token="${site.integrationToken || 'YOUR_SITE_TOKEN'}" async></script>`}</pre>
           <p className="tiny">The site token is used by the public widget to authenticate change events. Treat it as a site integration credential and regenerate it if abused.</p>
