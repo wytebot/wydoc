@@ -1,0 +1,8 @@
+import React,{useEffect,useState} from 'react';
+import {Routes,Route} from 'react-router-dom';
+import {collection,query,where,onSnapshot} from 'firebase/firestore';
+import {db} from './lib/firebase';
+import Layout from './components/Layout';
+import Dashboard from './pages/Dashboard'; import Sites from './pages/Sites'; import Issues from './pages/Issues'; import Notifications from './pages/Notifications'; import Billing from './pages/Billing'; import HowItWorks from './pages/HowItWorks'; import Legal from './pages/Legal'; import Settings from './pages/Settings'; import Auth from './pages/Auth';
+function NotFound(){return <div className="card empty"><h2>Page not found</h2><p className="muted">That page does not exist.</p></div>}
+export default function App({user}){const [sites,setSites]=useState([]);const [site,setSite]=useState(null);useEffect(()=>{if(!user)return;const q=query(collection(db,'sites'),where('ownerId','==',user.uid));return onSnapshot(q,s=>{const a=s.docs.map(d=>({id:d.id,...d.data()}));setSites(a);setSite(prev=>a.find(x=>x.id===prev?.id)||a[0]||null)},e=>console.error('Sites listener:',e))},[user]);if(!user)return <Auth/>;return <Layout user={user} sites={sites} site={site} setSite={setSite}><Routes><Route path="/" element={<Dashboard site={site} sites={sites}/>}/><Route path="/issues" element={<Issues site={site}/>}/><Route path="/sites" element={<Sites sites={sites} site={site} setSite={setSite}/>}/><Route path="/notifications" element={<Notifications site={site}/>}/><Route path="/how-it-works" element={<HowItWorks/>}/><Route path="/billing" element={<Billing user={user}/>}/><Route path="/legal" element={<Legal/>}/><Route path="/settings" element={<Settings/>}/><Route path="*" element={<NotFound/>}/></Routes></Layout>}
