@@ -1,6 +1,16 @@
 import React, { useState } from 'react';
 import { db, auth } from '../lib/firebase';
-import { Globe2, CheckCircle2, XCircle, Loader2, Copy, ExternalLink, Lock, ShieldCheck, ScanSearch } from 'lucide-react';
+import { Globe2, CheckCircle2, XCircle, Loader2, Copy, ExternalLink, Lock, ShieldCheck, ScanSearch, Replace, MousePointerClick } from 'lucide-react';
+
+async function copyText(text) {
+  try {
+    if (navigator.clipboard?.writeText) { await navigator.clipboard.writeText(text); return true; }
+  } catch {}
+  try {
+    const ta = document.createElement('textarea'); ta.value = text; ta.style.position='fixed'; ta.style.opacity='0'; document.body.appendChild(ta); ta.select();
+    const ok = document.execCommand('copy'); ta.remove(); return ok;
+  } catch { return false; }
+}
 
 async function authedJson(url, opts = {}) {
   const token = auth.currentUser ? await auth.currentUser.getIdToken() : null;
@@ -37,11 +47,14 @@ export default function Sites({ sites, site, setSite }) {
 
   const [connecting, setConnecting] = useState(false);
   const [connectErr, setConnectErr] = useState('');
+  const [replaceMode, setReplaceMode] = useState(false);
 
-  const canAdd = !sites.length || sites.some(s => s.plan === 'pro');
+  const isPro = sites.some(s => s.plan === 'pro');
+  const canAdd = !sites.length || isPro;
+  const canReplace = sites.length === 1 && !isPro;
 
   function resetVerification() {
-    setTag(null); setTagErr(''); setChecking(false); setCheckErr(''); setVerified(false); setConnectErr('');
+    setTag(null); setTagErr(''); setChecking(false); setCheckErr(''); setVerified(false); setConnectErr(''); setCopied(false);
   }
 
   async function loadTag(targetUrl) {
@@ -58,7 +71,8 @@ export default function Sites({ sites, site, setSite }) {
 
   async function previewSite() {
     if (!auth.currentUser) return setPreviewErr('Please sign in again.');
-    if (sites.length > 0 && !sites.some(s => s.plan === 'pro')) return setPreviewErr('Free includes one site. Upgrade to Pro to add another site.');
+    if (!canAdd && !replaceMode) return setPreviewErr('Free includes one site. Use Replace current site to switch it, or upgrade to Pro for multiple sites.');
+    if (replaceMode && !canReplace) return setPreviewErr('Replacement is available when you have exactly one Free site.');
     setPreviewErr(''); setPreview(null); resetVerification();
     try {
       setPreviewLoading(true);
@@ -91,10 +105,10 @@ export default function Sites({ sites, site, setSite }) {
       const data = await authedJson('/api/create-site', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ url: preview.url })
+        body: JSON.stringify({ url: preview.url, ...(replaceMode && site?.id ? { replaceSiteId: site.id } : {}) })
       });
       setSite(data.site);
-      setUrl(''); setPreview(null); resetVerification();
+      setUrl(''); setPreview(null); resetVerification(); setReplaceMode(false);
       try {
         const token = await auth.currentUser.getIdToken();
         const scan = await fetch('/api/initial-scan', { method:'POST', headers:{ Authorization:`Bearer ${token}`, 'Content-Type':'application/json' }, body:JSON.stringify({siteId:data.site.id}) });
@@ -122,7 +136,7 @@ export default function Sites({ sites, site, setSite }) {
       </div>
 
       <div className="card addSite">
-        <h3>Add a website</h3>
+        <div className="cardTitle"><div><h3>{replaceMode ? 'Replace connected website' : 'Add a website'}</h3><span className="muted">{replaceMode ? `Your current site (${site?.name || 'site'}) will be removed after the new site is verified.` : 'Connect a new website to WyDoc.'}</span></div>{canReplace && !replaceMode && <button className="secondary" onClick={()=>{setReplaceMode(true);setPreview(null);setPreviewErr('');resetVerification();}}><Replace size={16}/> Replace current site</button>}{replaceMode && <button className="secondary" onClick={()=>{setReplaceMode(false);setPreview(null);setPreviewErr('');resetVerification();}}>Cancel replacement</button>}</div>
         <div className="urlRow">
           <input
             value={url}
@@ -131,11 +145,11 @@ export default function Sites({ sites, site, setSite }) {
             placeholder="https://example.com"
             inputMode="url"
           />
-          <button className="primary" disabled={previewLoading || !url.trim() || !canAdd} onClick={previewSite}>
-            {previewLoading ? <Loader2 className="spin" /> : canAdd ? 'Verify site' : <><Lock size={16} />Pro only</>}
+            <button className="primary" disabled={previewLoading || !url.trim() || (!canAdd && !replaceMode)} onClick={previewSite}>
+            {previewLoading ? <Loader2 className="spin" /> : (canAdd || replaceMode) ? 'Verify site' : <><Lock size={16} />Pro only</>}
           </button>
         </div>
-        {!canAdd && <p className="muted">You already have a Free site. <a className="link" href="/billing">Upgrade to Pro</a> to connect more.</p>}
+        {!canAdd && !replaceMode && <p className="muted">You already have a Free site. Replace it with another verified site, or <a className="link" href="/billing">upgrade to Pro</a> to keep multiple sites.</p>}
         {previewErr && <div className="error">{previewErr}</div>}
         {preview && (
           <div className="verifyResult">
@@ -153,7 +167,7 @@ export default function Sites({ sites, site, setSite }) {
             {tag && (
               <>
                 <pre>{tag.metaTag}</pre>
-                <button className="secondary" onClick={() => { navigator.clipboard?.writeText(tag.metaTag); setCopied(true); }}>
+                <button className="secondary" onClick={async () => { const ok=await copyText(tag.metaTag); setCopied(ok); }}>
                   <Copy size={16} />{copied ? 'Copied' : 'Copy tag'}
                 </button>
                 <div className="checkRow">
@@ -168,8 +182,9 @@ export default function Sites({ sites, site, setSite }) {
 
             {verified && (
               <div className="connectRow">
+                {replaceMode && <p className="muted replaceWarning"><Replace size={15}/> This will replace <b>{site?.name}</b> with the verified site above.</p>}
                 <button className="primary wide" disabled={connecting} onClick={connectSite}>
-                  {connecting ? <Loader2 className="spin" /> : 'Connect site'}
+                  {connecting ? <Loader2 className="spin" /> : replaceMode ? 'Replace existing site' : 'Connect site'}
                 </button>
                 {connectErr && <div className="error">{connectErr}</div>}
               </div>
@@ -184,9 +199,9 @@ export default function Sites({ sites, site, setSite }) {
             <h3>Connected sites</h3>
             <span className="muted">{sites.length}{sites.some(s => s.plan === 'pro') ? ' · Pro' : ' / 1 free'}</span>
           </div>
-          {sites.length > 1 && (
+          {sites.length > 0 && (
             <button className="secondary changeSiteHeaderBtn" onClick={() => document.getElementById('connected-sites-list')?.scrollIntoView({behavior:'smooth',block:'start'})}>
-              <Globe2 size={16} /> Change site
+              <MousePointerClick size={16} /> Change / replace site
             </button>
           )}
         </div>
@@ -215,7 +230,7 @@ export default function Sites({ sites, site, setSite }) {
           <p className="muted">Place this once in your site's header. It reports page changes to WyDoc without sending your article body.</p>
           <pre>{`<script src="${window.location.origin}/widget.js" data-site-id="${site.id}" data-token="${site.integrationToken || 'YOUR_SITE_TOKEN'}" async></script>`}</pre>
           <p className="tiny">The site token is used by the public widget to authenticate change events. Treat it as a site integration credential and regenerate it if abused.</p>
-          <button className="secondary" onClick={() => { navigator.clipboard?.writeText(`<script src="${window.location.origin}/widget.js" data-site-id="${site.id}" data-token="${site.integrationToken || 'YOUR_SITE_TOKEN'}" async></script>`); setCopied(true); }}>
+          <button className="secondary" onClick={async () => { const ok=await copyText(`<script src="${window.location.origin}/widget.js" data-site-id="${site.id}" data-token="${site.integrationToken || 'YOUR_SITE_TOKEN'}" async></script>`); setCopied(ok); }}>
             <Copy size={16} />{copied ? 'Copied' : 'Copy snippet'}
           </button>
         </div>
