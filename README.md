@@ -31,3 +31,10 @@ Billing uses Flutterwave's current v4 OAuth authentication and charge APIs. Beca
 This project is configured to prevent Vercel/browser caching of `index.html`, the service worker, and the PWA manifest. Vite-generated `/assets/*` files remain immutable because their filenames are content-hashed. The service worker is registered with `updateViaCache: 'none'` and forced to update on app startup.
 
 After deploying a new version, open the Vercel deployment URL itself to verify the new build before checking the custom domain. If the custom domain still shows an older build, check Vercel's deployment assigned to the domain and promote the intended deployment to Production.
+
+
+## Deployment verification
+
+This release is stamped `2026-09-06-v17` and sends `X-WyDoc-Build: 2026-09-06-v17` on app responses. After deployment, inspect the response headers for that value. If it is absent, Vercel is serving a different deployment/project and browser cache is not the cause.
+
+The app also migrates/unregisters an older WyDoc service worker once, then registers the v17 worker with a cache-busting query and `updateViaCache: 'none'`.
