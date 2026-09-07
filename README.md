@@ -1,40 +1,73 @@
-# WyDoc
+# WyDoc v3 — cost-controlled form backend
 
-WyDoc is a website content-health SaaS that verifies site ownership, scans public pages, checks citations/freshness, uses Gemini with Google Search grounding for AI-assisted evidence review, sends web push alerts and handles billing.
+**The 10-Second Backend For Any HTML Form**
 
-## Vercel environment variables
+WyDoc receives HTML form submissions without requiring the site owner to run a backend. It keeps structured submission data in Supabase Postgres and uses the customer's own Google account for Gmail, Sheets and Drive.
 
-Browser: `VITE_FIREBASE_API_KEY`, `VITE_FIREBASE_AUTH_DOMAIN`, `VITE_FIREBASE_PROJECT_ID`, `VITE_FIREBASE_STORAGE_BUCKET`, `VITE_FIREBASE_MESSAGING_SENDER_ID`, `VITE_FIREBASE_APP_ID`, `VITE_FIREBASE_MEASUREMENT_ID`, `VITE_VAPID_PUBLIC_KEY`.
+## Storage strategy
 
-Server: `FIREBASE_SERVICE_ACCOUNT_JSON`, `FLW_CLIENT_ID`, `FLW_CLIENT_SECRET`, `FLW_SECRET_HASH`, `FLW_API_BASE_URL`, `APP_URL`, `GEMINI_API_KEY`, `GEMINI_MODEL` (optional; defaults to the model configured by the API), `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_EMAIL`. Never expose server secrets through `VITE_` variables.
+WyDoc does **not** require Cloudflare R2. Attachments are uploaded directly from the visitor's browser to the connected customer's Google Drive using a resumable Google Drive upload session. WyDoc stores only file metadata and the Drive link in Postgres. This keeps WyDoc's storage footprint tiny and moves file bytes to storage the customer already owns.
 
-## Scan flow
+If Google Drive is not connected, file metadata can be recorded or uploads can be disabled. The widget does not send file bytes through Vercel.
 
-After a site is verified and connected, WyDoc automatically runs `/api/initial-scan`: it checks discovered pages for dead outbound citations and stale/current-state wording, then runs Gemini with Google Search grounding over a small batch of public pages. The dashboard stores a compact report containing pages scanned, claims checked, dead citations, stale pages and a 0–100 review score.
+Retention can automatically delete old submissions and their Drive attachments.
 
-The dashboard pie chart shows the severity mix of open findings so teams can prioritize critical work.
+## Free/low-cost features
 
-## Push
+- One script + `data-wydoc` attribute for unlimited forms
+- Gmail notifications and auto-responder from the customer's own Google account
+- Google Sheets sync
+- Google Drive direct attachments
+- Honeypot + rate limiting + disposable-email detection
+- Duplicate detection
+- UTM/campaign capture
+- Signed webhooks
+- Lead pipeline: New → Contacted → Qualified → Won/Lost
+- Form health dashboard
+- Delivery retry queue
+- Custom success redirect
+- Retention cleanup
+- CSV export
 
-On a new Google login, WyDoc makes a best-effort attempt to register web push and sends a welcome notification when permission is granted. Users can still manage push from Notifications.
+## Plans
 
-## Flutterwave
+- Free: 100 submissions/month, WyDoc branding, 5MB/file
+- Starter: ₦5,000 / $5, 1,000 submissions/month, 10MB/file
+- Pro: ₦12,000 / $12, 5,000 submissions/month, 25MB/file
 
-Billing uses Flutterwave's current v4 OAuth authentication and charge APIs. Because Flutterwave's v4 hosted checkout/payment-link flow is still being developed, this build uses the v4 OPay payment-method flow and redirects the customer to Flutterwave/OPay when the charge returns a redirect URL. Set `FLW_API_BASE_URL` to the production API base or sandbox base when testing. The webhook verifies its signature and independently retrieves the v4 charge before granting Pro access.
+## Google OAuth
 
-## Public pages
+The Google connection requests:
+- `gmail.send`
+- `spreadsheets`
+- `drive.file`
 
-`/privacy`, `/terms`, `/about`, and `/how-it-works` are available from the app.
+After deploying this version, reconnect Google so existing users grant the new Drive scope.
 
-## Deployment / cache
+## Retry/maintenance
 
-This project is configured to prevent Vercel/browser caching of `index.html`, the service worker, and the PWA manifest. Vite-generated `/assets/*` files remain immutable because their filenames are content-hashed. The service worker is registered with `updateViaCache: 'none'` and forced to update on app startup.
+Two Vercel Cron routes are included: daily delivery retry and daily retention cleanup. They are secured with `CRON_SECRET`. Vercel's current Hobby cron limits are daily schedules, so the project intentionally uses daily cron schedules instead of an hourly/minute schedule.
 
-After deploying a new version, open the Vercel deployment URL itself to verify the new build before checking the custom domain. If the custom domain still shows an older build, check Vercel's deployment assigned to the domain and promote the intended deployment to Production.
+## Environment variables
 
+Server-side Firebase verification also requires `FIREBASE_SERVICE_ACCOUNT_JSON`. After adding payment webhooks, keep the billing status verification endpoint enabled as a fallback for delayed webhooks. Successful payments activate the selected plan for 30 days; expired paid plans fall back to Free limits.
 
-## Deployment verification
+See `.env.example`. Never expose Supabase service role, Google client secret, OAuth encryption key, payment secrets or `CRON_SECRET` in frontend variables.
 
-This release is stamped `2026-09-06-v17` and sends `X-WyDoc-Build: 2026-09-06-v17` on app responses. After deployment, inspect the response headers for that value. If it is absent, Vercel is serving a different deployment/project and browser cache is not the cause.
+## Deployment
 
-The app also migrates/unregisters an older WyDoc service worker once, then registers the v17 worker with a cache-busting query and `updateViaCache: 'none'`.
+1. Run the SQL in `supabase-schema.sql`.
+2. Configure Vercel environment variables.
+3. Deploy.
+4. In Google Cloud Console, add `https://formback.ng/api/google-callback` as an OAuth redirect URI.
+5. Reconnect Google from **Integrations**.
+6. Create a form and install:
+
+```html
+<script src="https://formback.ng/widget.js"></script>
+<form data-wydoc="YOUR_FORM_KEY">
+```
+
+## Important
+
+The local environment may not have enough network time to complete `npm install`. Before release, run `npm ci` and `npm run build` in CI/Vercel and inspect the deployment logs.

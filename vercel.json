@@ -12,32 +12,39 @@
     {
       "source": "/index.html",
       "headers": [
-        {"key": "X-WyDoc-Build", "value": "2026-09-07-v18"},
-        {"key": "Cache-Control", "value": "no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0"},
-        {"key": "Pragma", "value": "no-cache"},
-        {"key": "Expires", "value": "0"}
+        {
+          "key": "Cache-Control",
+          "value": "no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0"
+        }
       ]
     },
     {
-      "source": "/wydoc-sw.js",
+      "source": "/widget.js",
       "headers": [
-        {"key": "X-WyDoc-Build", "value": "2026-09-07-v18"},
-        {"key": "Cache-Control", "value": "no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0"},
-        {"key": "Service-Worker-Allowed", "value": "/"}
-      ]
-    },
-    {
-      "source": "/manifest.webmanifest",
-      "headers": [
-        {"key": "X-WyDoc-Build", "value": "2026-09-07-v18"},
-        {"key": "Cache-Control", "value": "no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0"}
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=300"
+        }
       ]
     },
     {
       "source": "/assets/(.*)",
       "headers": [
-        {"key": "Cache-Control", "value": "public, max-age=31536000, immutable"}
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=31536000, immutable"
+        }
       ]
+    }
+  ],
+  "crons": [
+    {
+      "path": "/api/process-delivery-jobs",
+      "schedule": "0 3 * * *"
+    },
+    {
+      "path": "/api/maintenance",
+      "schedule": "30 3 * * *"
     }
   ]
 }

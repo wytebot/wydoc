@@ -7,7 +7,7 @@ import admin from 'firebase-admin';
 // JSON.parse() on the client with "Unexpected token 'A' ... is not valid JSON".
 // Deferring the throw into getAdmin() means it only happens inside a handler's
 // try/catch, so callers always get a proper JSON error response instead.
-function getAdmin() {
+export function getAdmin() {
   if (!admin.apps.length) {
     const raw = process.env.FIREBASE_SERVICE_ACCOUNT_JSON;
     if (!raw) throw new Error('Server is misconfigured: FIREBASE_SERVICE_ACCOUNT_JSON is not set.');
