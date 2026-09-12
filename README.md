@@ -9,7 +9,7 @@ Commercial-ready, white-label CRM/customer-management source-code edition. This 
 - Sales pipeline with stage changes, editing and deletion
 - Tasks/follow-ups with complete/reopen/edit/delete
 - Appointments with schedule/complete/edit/delete
-- Activities/timeline records
+- Activities/timeline records with edit/delete actions
 - Documents with safe HTTP(S) link opening
 - Tags with duplicate prevention and customer cleanup
 - Team & Roles demo model with editable roles/statuses
